@@ -15,12 +15,7 @@
     @component('admin.components.card')
 
         @slot('card_header')
-
             Evaluación de cumplimiento de hitos
-            <div class="card-header-actions">
-                <a class="btn btn-primary" href="{{ route('fulfillments.create') }}"> Nuevo cumplimiento</a>
-            </div>
-
         @endslot
 
         @slot('card_body')
@@ -32,7 +27,7 @@
                     <th>Institución</th>
                     <th>Hito cumplido</th>
                     <th>Fecha de cumplimiento</th>
-                    <th>Fecha de cumplimiento</th>
+                    <th>Accion</th>
                 </tr>
             </thead>
             <tbody>
@@ -46,10 +41,10 @@
 <script type="text/javascript">
 
   $(function () {
-      $.ajaxSetup({
-          headers: {
-              'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-          }
+    $.ajaxSetup({
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        }
     });
 
     var table = $('.data-table').DataTable({
@@ -58,11 +53,33 @@
         ajax: "{{ route('assessment.index') }}",
         columns: [
             {data: 'DT_RowIndex', name: 'DT_RowIndex', orderable: false, searchable: false},
-            {data: 'name', name: 'name'},
-            {data: 'description', name: 'description'},
+            // nombre de la institucion
+            {data: 'name', name: 'institutions.name'},
+            // informacion del hito
+            {
+                data: 'milestone_number',
+                name: 'milestones.milestone_number',
+                render: function (data, type, row) {
+                    return '<strong>' + row.milestone_number + '</strong> ' + row.description;
+                },
+            },
+            // fecha de cumplimiento
             {data: 'fulfillment_date', name: 'fulfillment_date'},
+            // columna de botones
             {data: 'action', name: 'action', orderable: false, searchable: false},
         ],
+        initComplete: function () {
+            this.api().columns().every(function () {
+                var column = this;
+                var input = document.createElement("input");
+                $(input).appendTo($(column.footer()).empty())
+                .on('change', function () {
+                    var val = $.fn.dataTable.util.escapeRegex($(this).val());
+
+                    column.search(val ? val : '', true, false).draw();
+                });
+            });
+        },
         "language": {
             "sProcessing":     "Procesando...",
             "sLengthMenu":     "Mostrar _MENU_ registros",
@@ -89,6 +106,19 @@
         },
         responsive: true,
     });
+
+    $('body').on('click', '.grade', function () {
+      var activity_id = $(this).data('id');
+      console.log(activity_id);
+      $.get("{{ route('fulfillment_activities.index') }}" +'/' + activity_id +'/edit', function (data) {
+          $('#modelHeading').html("Editar actividad");
+          $('#saveBtn').val("edit-activity");
+          $('#ajaxModel').modal('show');
+          $('#activity_id').val(data.id);
+          $('#fulfillment_id').val(data.fulfillment_id);
+          $('#activity_summary').val(data.activity_summary);
+      })
+   });
 });
 
 </script>
